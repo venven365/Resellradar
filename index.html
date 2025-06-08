@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resell Radar</title>
+  <style>
+    :root {
+      --bg: #1a1b1e;
+      --panel: #232429;
+      --accent: #4ad991;
+      --text: #f5f6fa;
+      --muted: #a2a2ac;
+      --danger: #ff5e5e;
+      --border: #32333a;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 24px;
+      background: var(--panel);
+      border-radius: 10px;
+      box-shadow: 0 3px 20px #0006;
+    }
+
+    h1 {
+      color: var(--accent);
+      margin-bottom: 0.2em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 1.5em;
+    }
+
+    #controls {
+      margin-bottom: 1em;
+    }
+
+    #controls button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b1e;
+      font-weight: bold;
+      padding: 0.5em 1.2em;
+      margin-right: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5em;
+    }
+
+    th, td {
+      padding: 0.7em;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    th {
+      color: var(--accent);
+      cursor: pointer;
+    }
+
+    [data-demand="High"] {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    [data-demand="Medium"] {
+      color: #ffbd4a;
+    }
+
+    [data-demand="Low"] {
+      color: var(--danger);
+    }
+
+    #editSection {
+      display: none;
+    }
+
+    textarea {
+      width: 100%;
+      background: #191a1c;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.8em;
+      border-radius: 6px;
+      min-height: 150px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.9em;
+      margin-bottom: 1em;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      margin-top: 2em;
+      font-size: 0.9em;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        font-size: 15px;
+      }
+
+      th, td {
+        padding: 0.5em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Resell Radar</h1>
+    <div class="subtitle">Track top clothing items by popularity, demand, and profit</div>
+
+    <div id="controls">
+      <button id="editBtn">Edit Data</button>
+      <button id="saveBtn" style="display:none;">Save</button>
+      <button id="cancelBtn" style="display:none;">Cancel</button>
+    </div>
+
+    <div id="tableSection">
+      <table id="itemsTable">
+        <thead>
+          <tr>
+            <th data-sort="brand">Brand</th>
+            <th data-sort="name">Item</th>
+            <th data-sort="popularity">Popularity</th>
+            <th data-sort="demand">Demand</th>
+            <th data-sort="buy">Buy (£)</th>
+            <th data-sort="sell">Sell (£)</th>
+            <th data-sort="profit">Profit %</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div id="editSection">
+      <div class="hint">Paste or edit item JSON below. Format must match the structure.</div>
+      <textarea id="dataEditor"></textarea>
+    </div>
+
+    <footer>
+      Future versions may support API data from Depop, eBay, etc.<br />
+      Deployable via GitHub Pages or open locally in your browser.
+    </footer>
+  </div>
+
+  <script>
+    let itemsData = [
+      {
+        brand: "Nike",
+        name: "Air Max 2023",
+        popularity: 8,
+        demand: "High",
+        buy: 120,
+        sell: 180
+      },
+      {
+        brand: "Adidas",
+        name: "Yeezy Boost 350",
+        popularity: 9,
+        demand: "High",
+        buy: 200,
+        sell: 330
+      },
+      {
+        brand: "Supreme",
+        name: "Box Logo Tee",
+        popularity: 7,
+        demand: "Medium",
+        buy: 60,
+        sell: 90
+      },
+      {
+        brand: "Stone Island",
+        name: "Shadow Project Hoodie",
+        popularity: 6,
+        demand: "Medium",
+        buy: 110,
+        sell: 150
+      },
+      {
+        brand: "Palace",
+        name: "Tri-Ferg T-Shirt",
+        popularity: 6,
+        demand: "Low",
+        buy: 45,
+        sell: 60
+      }
+    ];
+
+    let sortColumn = null;
+    let sortAsc = true;
+
+    const table = document.querySelector("#itemsTable tbody");
+
+    function calcProfit(buy, sell) {
+      return buy === 0 ? "0" : (((sell - buy) / buy) * 100).toFixed(1);
+    }
+
+    function renderTable() {
+      table.innerHTML = "";
+      let data = [...itemsData];
+
+      if (sortColumn) {
+        data.sort((a, b) => {
+          let valA = sortColumn === 'profit' ? +calcProfit(a.buy, a.sell) : a[sortColumn];
+          let valB = sortColumn === 'profit' ? +calcProfit(b.buy, b.sell) : b[sortColumn];
+          if (typeof valA === 'string') valA = valA.toLowerCase();
+          if (typeof valB === 'string') valB = valB.toLowerCase();
+          return sortAsc ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
+        });
+      }
+
+      for (const item of data) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.brand}</td>
+          <td>${item.name}</td>
+          <td>${item.popularity} / 10</td>
+          <td data-demand="${item.demand}">${item.demand}</td>
+          <td>£${item.buy}</td>
+          <td>£${item.sell}</td>
+          <td>${calcProfit(item.buy, item.sell)}%</td>
+        `;
+        table.appendChild(row);
+      }
+    }
+
+    document.querySelectorAll("th[data-sort]").forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.getAttribute("data-sort");
+        if (sortColumn === col) {
+          sortAsc = !sortAsc;
+        } else {
+          sortColumn = col;
+          sortAsc = true;
+        }
+        renderTable();
+      });
+    });
+
+    const editBtn = document.getElementById("editBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const tableSection = document.getElementById("tableSection");
+    const editSection = document.getElementById("editSection");
+    const dataEditor = document.getElementById("dataEditor");
+
+    editBtn.onclick = () => {
+      dataEditor.value = JSON.stringify(itemsData, null, 2);
+      editSection.style.display = "block";
+      tableSection.style.display = "none";
+      editBtn.style.display = "none";
+      saveBtn.style.display = "inline-block";
+      cancelBtn.style.display = "inline-block";
+    };
+
+    cancelBtn.onclick = () => {
+      editSection.style.display = "none";
+      tableSection.style.display = "block";
+      editBtn.style.display = "inline-block";
+      saveBtn.style.display = "none";
+      cancelBtn.style.display = "none";
+    };
+
+    saveBtn.onclick = () => {
+      try {
+        const updated = JSON.parse(dataEditor.value);
+        if (!Array.isArray(updated)) throw "Invalid data";
+        for (let item of updated) {
+          if (!item.brand || !item.name || typeof item.popularity !== "number" || typeof item.buy !== "number" || typeof item.sell !== "number") throw "Missing fields";
+        }
+        itemsData = updated;
+        cancelBtn.onclick();
+        renderTable();
+      } catch (err) {
+        alert("Invalid JSON: " + err);
+      }
+    };
+
+    renderTable();
+  </script>
+</body>
+</html>
